@@ -1,0 +1,55 @@
+[DEFAULT]
+bind_port = 8080
+bind_ip = 0.0.0.0
+user = swift
+swift_dir = /etc/swift
+
+log_facility = LOG_LOCAL0
+log_level = DEBUG
+
+[pipeline:main]
+pipeline = catch_errors healthcheck cache authtoken keystoneauth container-quotas account-quotas proxy-server
+
+[app:proxy-server]
+use = egg:swift#proxy
+allow_account_management = true
+account_autocreate = true
+
+[filter:keystoneauth]
+use = egg:swift#keystoneauth
+operator_roles = Member,admin
+
+[filter:authtoken]
+paste.filter_factory = keystone.middleware.auth_token:filter_factory
+service_protocol = http
+service_port = 5000
+service_host = <%= keystone_host %>
+auth_port = 35357
+auth_host = <%= keystone_host %>
+auth_protocol = http
+admin_tenant_name = <%= service_tenant_name %>
+admin_user = swift
+admin_password = <%= service_password %>
+signing_dir = /etc/swift
+
+[filter:cache]
+use = egg:swift#memcache
+set log_name = cache
+memcache_servers = <%= memcache_host %>:11211
+
+[filter:catch_errors]
+use = egg:swift#catch_errors
+
+[filter:healthcheck]
+use = egg:swift#healthcheck
+
+[filter:proxy-logging]
+use = egg:swift#proxy_logging
+
+[filter:ratelimit]
+use = egg:swift#ratelimit
+[filter:container-quotas]
+use = egg:swift#container_quotas
+
+[filter:account-quotas]
+use = egg:swift#account_quotas

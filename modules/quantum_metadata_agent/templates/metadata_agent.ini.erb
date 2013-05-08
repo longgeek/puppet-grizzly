@@ -1,0 +1,11 @@
+[DEFAULT]
+debug = True
+verbose = True
+auth_url = <%= service_endpoint %>
+auth_region = <%= keystone_region %>
+admin_tenant_name = <%= service_tenant_name %>
+admin_user = quantum
+admin_password = <%= service_password %>
+state_path = /var/lib/quantum
+nova_metadata_ip = <%= nova_api %>
+nova_metadata_port = 8775

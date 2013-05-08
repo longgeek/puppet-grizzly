@@ -1,0 +1,23 @@
+[DEFAULT]
+bind_ip = 0.0.0.0
+bind_port = 6000
+user = swift
+devices = <%= storage_base_dir %>
+mount_check = false
+swift_dir = /etc/swift
+workers = <%= storage_workers %>
+
+log_facility = LOG_LOCAL3
+log_level = DEBUG
+
+[pipeline:main]
+pipeline = object-server
+
+[app:object-server]
+use = egg:swift#object
+
+[object-replicator]
+
+[object-updater]
+
+[object-auditor]

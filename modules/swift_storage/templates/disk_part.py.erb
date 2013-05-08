@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+import os, re
+
+disk_part = <%= storage_disk_part %>
+for part in disk_part:
+    part_disk = (re.findall("[a-z]{3}",part))[0]
+    part_num = (re.findall("[1-9]{1}",part))[0]
+    if int(part_num) == int(1):
+        os.system("parted /dev/"+part_disk+" -s mklabel msdos")
+        os.system("parted /dev/"+part_disk+" -s mkpart primary 0 100%")
+    elif int(part_num) == int(5):
+        os.system("parted /dev/"+part_disk+" -s mklabel msdos")
+        part_start = os.popen("parted /dev/"+part_disk+" -s print | grep -v ^$ | tail -n 1 | awk '{print $3}'").read().strip()
+        os.system("parted /dev/"+part_disk+" -s mkpart extended "+part_start+" 100%")
+        os.system("parted /dev/"+part_disk+" -s mkpart logical "+part_start+" 100%")
+    elif int(part_num) > int(5):
+        os.system("parted /dev/"+part_disk+" -s mklabel msdos")
+        part_start = os.popen("parted /dev/"+part_disk+" -s print | grep -v ^$ | tail -n 1 | awk '{print $3}'").read().strip()
+        os.system("parted /dev/"+part_disk+" -s mkpart logical "+part_start+" 100%")
+
+    else:
+        os.system("parted /dev/"+part_disk+" -s mklabel msdos")
+        part_start = os.popen("parted /dev/"+part_disk+" -s print | grep -v ^$ | tail -n 1 | awk '{print $3}'").read().strip()
+        os.system("parted /dev/"+part_disk+" -s mkpart primary "+part_start+" 100%")
+
+    os.system("partx -a /dev/"+part_disk+" > /dev/null 2>&1")
+    os.system("partx -a /dev/"+part_disk+" > /dev/null 2>&1")
+
+for part in disk_part:
+    print part
+    os.system("mkfs.xfs -i size=1024 /dev/"+part+" -f")
+    os.system("echo \"/dev/"+part+" <%= storage_base_dir %>"+part+" xfs noatime,nodiratime,nobarrier,logbufs=8 0 0\" >> /etc/fstab")
+    os.system("mkdir -p <%= storage_base_dir %>"+part+"; mount <%= storage_base_dir %>"+part+"")
+
+os.system("chown -R swift:swift <%= storage_base_dir %>; chown -R swift:swift /etc/swift/")

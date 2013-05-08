@@ -1,0 +1,23 @@
+[DEFAULT]
+bind_ip = 0.0.0.0
+bind_port = 6002
+mount_check = false
+user = swift
+devices = <%= storage_base_dir %>
+swift_dir = /etc/swift
+workers = <%= storage_workers %>
+
+log_facility = LOG_LOCAL1
+log_level = DEBUG
+
+[pipeline:main]
+pipeline = account-server
+
+[app:account-server]
+use = egg:swift#account
+
+[account-replicator]
+
+[account-auditor]
+
+[account-reaper]

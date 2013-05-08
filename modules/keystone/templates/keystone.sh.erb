@@ -1,0 +1,117 @@
+#!/bin/sh
+#
+# Keystone Datas
+#
+# Description: Fill Keystone with datas.
+#
+# Mail:    longgeek@gmail.com
+# Blog:    http://www.longgeek.com
+# Weibo:   http://weibo.com/longgeek
+# Twitter: @Longgeek
+#
+
+# Please set 13, 30 lines of variables
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-<%= admin_password %>}
+SERVICE_PASSWORD=${SERVICE_PASSWORD:-<%= service_password %>}
+export SERVICE_TOKEN="<%= admin_token %>"
+export SERVICE_ENDPOINT="<%= service_endpoint %>"
+SERVICE_TENANT_NAME=${SERVICE_TENANT_NAME:-<%= service_tenant_name %>}
+KEYSTONE_REGION=<%= keystone_region %>
+# If you need to provide the service, please to open keystone_wlan_ip and swift_wlan_ip
+# of course you are a multi-node architecture, and swift service
+# corresponding ip address set the following variables
+KEYSTONE_IP="<%= keystone_host %>"
+#KEYSTONE_WLAN_IP="172.16.0.254"
+SWIFT_IP="<%= swift_proxy_host %>"
+#SWIFT_WLAN_IP="172.16.0.254"
+COMPUTE_IP=$KEYSTONE_IP
+EC2_IP=$KEYSTONE_IP
+GLANCE_IP=$KEYSTONE_IP
+VOLUME_IP=$KEYSTONE_IP
+QUANTUM_IP=$KEYSTONE_IP
+
+get_id () {
+    echo `$@ | awk '/ id / { print $4 }'`
+}
+
+# Create Tenants
+SERVICE_TENANT=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT tenant-create --name=$SERVICE_TENANT_NAME)
+DEMO_TENANT=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT tenant-create --name=demo)
+INVIS_TENANT=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT tenant-create --name=invisible_to_admin)
+ADMIN_TENANT=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT tenant-create --name=admin)
+
+# Create Users
+ADMIN_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=admin --pass="$ADMIN_PASSWORD" --email=admin@domain.com)
+DEMO_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=demo --pass="$ADMIN_PASSWORD" --email=demo@domain.com)
+
+# Create Roles
+ADMIN_ROLE=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT role-create --name=admin)
+KEYSTONEADMIN_ROLE=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT role-create --name=KeystoneAdmin)
+KEYSTONESERVICE_ROLE=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT role-create --name=KeystoneServiceAdmin)
+
+# Add Roles to Users in Tenants
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --user-id $ADMIN_USER --role-id $ADMIN_ROLE --tenant-id $ADMIN_TENANT
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --user-id $ADMIN_USER --role-id $ADMIN_ROLE --tenant-id $DEMO_TENANT
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --user-id $ADMIN_USER --role-id $KEYSTONEADMIN_ROLE --tenant-id $ADMIN_TENANT
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --user-id $ADMIN_USER --role-id $KEYSTONESERVICE_ROLE --tenant-id $ADMIN_TENANT
+
+# The Member role is used by Horizon and Swift
+MEMBER_ROLE=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT role-create --name=Member)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --user-id $DEMO_USER --role-id $MEMBER_ROLE --tenant-id $DEMO_TENANT
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --user-id $DEMO_USER --role-id $MEMBER_ROLE --tenant-id $INVIS_TENANT
+
+# Configure service users/roles
+NOVA_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=nova --pass="$SERVICE_PASSWORD" --tenant-id $SERVICE_TENANT --email=nova@domain.com)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --tenant-id $SERVICE_TENANT --user-id $NOVA_USER --role-id $ADMIN_ROLE
+
+GLANCE_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=glance --pass="$SERVICE_PASSWORD" --tenant-id $SERVICE_TENANT --email=glance@domain.com)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --tenant-id $SERVICE_TENANT --user-id $GLANCE_USER --role-id $ADMIN_ROLE
+
+SWIFT_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=swift --pass="$SERVICE_PASSWORD" --tenant-id $SERVICE_TENANT --email=swift@domain.com)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --tenant-id $SERVICE_TENANT --user-id $SWIFT_USER --role-id $ADMIN_ROLE
+
+RESELLER_ROLE=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT role-create --name=ResellerAdmin)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --tenant-id $SERVICE_TENANT --user-id $NOVA_USER --role-id $RESELLER_ROLE
+
+QUANTUM_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=quantum --pass="$SERVICE_PASSWORD" --tenant-id $SERVICE_TENANT --email=quantum@domain.com)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --tenant-id $SERVICE_TENANT --user-id $QUANTUM_USER --role-id $ADMIN_ROLE
+
+CINDER_USER=$(get_id keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-create --name=cinder --pass="$SERVICE_PASSWORD" --tenant-id $SERVICE_TENANT --email=cinder@domain.com)
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT user-role-add --tenant-id $SERVICE_TENANT --user-id $CINDER_USER --role-id $ADMIN_ROLE
+
+## Create Service
+KEYSTONE_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name keystone --type identity --description 'OpenStack Identity'| awk '/ id / { print $4 }' )
+COMPUTE_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name=nova --type=compute --description='OpenStack Compute Service'| awk '/ id / { print $4 }' )
+CINDER_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name=cinder --type=volume --description='OpenStack Volume Service'| awk '/ id / { print $4 }' )
+GLANCE_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name=glance --type=image --description='OpenStack Image Service'| awk '/ id / { print $4 }' )
+SWIFT_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name=swift --type=object-store --description='OpenStack Storage Service' | awk '/ id / { print $4 }'  )
+EC2_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name=ec2 --type=ec2 --description='OpenStack EC2 service'| awk '/ id / { print $4 }' )
+QUANTUM_ID=$(keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT service-create --name=quantum --type=network --description='OpenStack Networking service'| awk '/ id / { print $4 }'  )
+
+## Create Endpoint
+#identity
+if [ "$KEYSTONE_WLAN_IP" != '' ];then
+    keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$KEYSTONE_ID --publicurl http://"$KEYSTONE_WLAN_IP":5000/v2.0 --adminurl http://"$KEYSTONE_WLAN_IP":35357/v2.0 --internalurl http://"$KEYSTONE_WLAN_IP":5000/v2.0
+fi
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$KEYSTONE_ID --publicurl http://"$KEYSTONE_IP":5000/v2.0 --adminurl http://"$KEYSTONE_IP":35357/v2.0 --internalurl http://"$KEYSTONE_IP":5000/v2.0
+
+#compute
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$COMPUTE_ID --publicurl http://"$COMPUTE_IP":8774/v2/\$\(tenant_id\)s --adminurl http://"$COMPUTE_IP":8774/v2/\$\(tenant_id\)s --internalurl http://"$COMPUTE_IP":8774/v2/\$\(tenant_id\)s
+
+#volume
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$CINDER_ID --publicurl http://"$VOLUME_IP":8776/v1/\$\(tenant_id\)s --adminurl http://"$VOLUME_IP":8776/v1/\$\(tenant_id\)s --internalurl http://"$VOLUME_IP":8776/v1/\$\(tenant_id\)s
+
+#image
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$GLANCE_ID --publicurl http://"$GLANCE_IP":9292/v2 --adminurl http://"$GLANCE_IP":9292/v2 --internalurl http://"$GLANCE_IP":9292/v2
+
+#object-store
+if [ "$SWIFT_WLAN_IP" != '' ];then
+    keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$SWIFT_ID --publicurl http://"$SWIFT_WLAN_IP":8080/v1/AUTH_\$\(tenant_id\)s --adminurl http://"$SWIFT_WLAN_IP":8080/v1 --internalurl http://"$SWIFT_WLAN_IP":8080/v1/AUTH_\$\(tenant_id\)s
+fi
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$SWIFT_ID --publicurl http://"$SWIFT_IP":8080/v1/AUTH_\$\(tenant_id\)s --adminurl http://"$SWIFT_IP":8080/v1 --internalurl http://"$SWIFT_IP":8080/v1/AUTH_\$\(tenant_id\)s
+
+#ec2
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$EC2_ID --publicurl http://"$EC2_IP":8773/services/Cloud --adminurl http://"$EC2_IP":8773/services/Admin --internalurl http://"$EC2_IP":8773/services/Cloud
+
+#network
+keystone --token $SERVICE_TOKEN --endpoint $SERVICE_ENDPOINT endpoint-create --region $KEYSTONE_REGION --service-id=$QUANTUM_ID --publicurl http://"$QUANTUM_IP":9696/ --adminurl http://"$QUANTUM_IP":9696/ --internalurl http://"$QUANTUM_IP":9696/

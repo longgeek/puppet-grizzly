@@ -1,0 +1,47 @@
+class openvswitch {
+    package { "openvswitch-datapath-source":
+        ensure => installed,
+        notify => Exec["install_module"],
+    }
+
+    exec { "install_module":
+        command => "module-assistant auto-install openvswitch-datapath; touch /root/.install_module",
+        path => $command_path,
+        creates => "/root/.install_module",
+        notify => Package["openvswitch-switch", "openvswitch-brcompat"],
+    }
+
+    package { ["openvswitch-switch", "openvswitch-brcompat"]:
+        ensure => installed,
+        notify => Exec["boot_brcompat"],
+    }
+
+    exec { "boot_brcompat":
+        command => "sed -i 's/# BRCOMPAT=no/BRCOMPAT=yes/g' /etc/default/openvswitch-switch; touch /etc/openvswitch/.boot_brcompat",
+        path => $command_path,
+        creates => "/etc/openvswitch/.boot_brcompat",
+        notify => Service["openvswitch-switch"],
+    }
+
+    service { "openvswitch-switch":
+        ensure => running,
+        enable => true,
+        hasstatus => true,
+        hasrestart => true,
+        notify => File["/etc/openvswitch/create-bridge-network.sh"],
+    }
+
+    file { "/etc/openvswitch/create-bridge-network.sh":
+        content => template("openvswitch/create-bridge-network.sh.erb"),
+        owner => "root",
+        group => "root",
+        mode => "755",
+        notify => Exec["sh_scripts"],
+    }
+
+    exec { "sh_scripts":
+        command => "sh /etc/openvswitch/create-bridge-network.sh; sleep 20; touch /etc/openvswitch/.sh_scripts",
+        path => $command_path,
+        creates => "/etc/openvswitch/.sh_scripts",
+    }
+}

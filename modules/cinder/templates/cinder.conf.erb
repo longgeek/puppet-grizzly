@@ -1,0 +1,20 @@
+[DEFAULT]
+# LOG/STATE
+verbose = True
+debug = False
+iscsi_helper = ietadm
+auth_strategy = keystone
+volume_group = cinder-volumes
+volume_name_template = volume-%s
+state_path = /var/lib/cinder
+volumes_dir = /var/lib/cinder/volumes
+rootwrap_config = /etc/cinder/rootwrap.conf
+api_paste_confg = /etc/cinder/api-paste.ini
+# RPC
+rabbit_host = <%= rabbit_host %>
+rabbit_password = guest
+rpc_backend = cinder.openstack.common.rpc.impl_kombu
+# DATABASE
+sql_connection = mysql://cinder:<%= cinder_db_password %>@<%= mysql_host %>/cinder
+# API
+osapi_volume_extension = cinder.api.contrib.standard_extensions

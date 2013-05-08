@@ -1,0 +1,29 @@
+[DEFAULT]
+debug = <%= debug_log %>
+verbose = <%= verbose %>
+state_path = /var/lib/quantum
+bind_host = 0.0.0.0
+bind_port = 9696
+core_plugin = quantum.plugins.openvswitch.ovs_quantum_plugin.OVSQuantumPluginV2
+api_paste_config = /etc/quantum/api-paste.ini
+control_exchange = quantum
+rabbit_host = <%= rabbit_host %>
+rabbit_password = guest
+rabbit_port = 5672
+rabbit_userid = guest
+notification_driver = quantum.openstack.common.notifier.rpc_notifier
+default_notification_level = INFO
+notification_topics = notifications
+[QUOTAS]
+[DEFAULT_SERVICETYPE]
+[SECURITYGROUP]
+[AGENT]
+root_helper = sudo quantum-rootwrap /etc/quantum/rootwrap.conf
+[keystone_authtoken]
+auth_host = <%= keystone_host %>
+auth_port = 35357
+auth_protocol = http
+admin_tenant_name = <%= service_tenant_name %>
+admin_user = quantum
+admin_password = <%= service_password %>
+signing_dir = /var/lib/quantum/keystone-signing

@@ -1,0 +1,10 @@
+[DATABASE]
+sql_connection = mysql://quantum:<%= quantum_db_password %>@<%= mysql_host %>/quantum
+reconnect_interval = 2
+[OVS]
+tenant_network_type = gre
+enable_tunneling = True
+tunnel_id_ranges = 1:1000
+[AGENT]
+polling_interval = 2
+[SECURITYGROUP]

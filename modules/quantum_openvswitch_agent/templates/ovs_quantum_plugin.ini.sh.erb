@@ -1,0 +1,17 @@
+local_ip=`ifconfig <%= data_network_interfaces %> | awk '/inet addr/ {print $2}' | awk -F: '{print $2}'`
+cat > /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini << _GEEK_
+[DATABASE]
+sql_connection = mysql://quantum:<%= quantum_db_password %>@<%= mysql_host %>/quantum
+reconnect_interval = 2
+[OVS]
+enable_tunneling = True
+tenant_network_type = gre
+tunnel_id_ranges = 1:1000
+local_ip = $local_ip
+integration_bridge = br-int
+tunnel_bridge = br-tun
+[AGENT]
+polling_interval = 2
+[SECURITYGROUP]
+_GEEK_
+chown root:quantum /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini

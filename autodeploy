@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Author: geek
+# Date  : 2012-07-10
+# Comment: 本程序默认需要在dhcp中绑定地址后才可以pxe系统,默认的绑定地址为空,
+#          有节点来pxe获得dhcp时候就无法获得到ip地址  并对/var/log/message/
+#           日志做分析,获取节点eth0的mac地址,在根据一份ip hostname文件进行绑
+#          定地址.
+
+import os
+
+if not os.path.exists("/opt/pre-nodes"):
+    print 'ERROR: File /opt/pre-nodes not found!'
+    exit()
+if os.popen("cat /opt/pre-nodes").read().rstrip() == '':
+    print 'ERROR: File /opt/pre-nodes is empty!'
+    exit()
+
+#清除以前的 DHCP 请求记录
+os.system("cat /var/log/syslog | grep -v DHCPDISCOVER > /var/log/.syslog.bak; cat /var/log/.syslog.bak > /var/log/syslog")
+
+#分别提取/opt/pre-nodes中的ip和hostname
+catip = os.popen("cat /opt/pre-nodes | grep -v ^# | awk '{print $1}'").read().strip()
+cathostname = os.popen("cat /opt/pre-nodes | grep -v ^# | awk '{print $2}'").read().strip()
+cathostname = cathostname.split("\n")
+catip = catip.split("\n")
+#修改你的环境
+ip = os.popen("ifconfig eth0 | grep 'inet addr' | awk '{print $2}' | awk -F : '{print $2}'").read().strip()
+#netmask = "255.255.255.0"
+gateway = ip
+dns = ip
+nextserver = ip
+
+#判断netmask
+ip = ''.join(list(ip))
+ipmask = ip.split('.')
+ip = ip.split('.')
+ip = str('.'.join(ip))
+if 1 <= int(ipmask[0]) and int(ipmask[0]) <= 126:
+    netmask = '255.0.0.0'
+elif 128 <= int(ipmask[0])  and int(ipmask[0]) <= 191:
+    netmask = '255.255.0.0'
+elif 192 <= int(ipmask[0])  and int(ipmask[0]) <= 223:
+    netmask = '255.255.255.0'
+
+##输入"esc"退出程序，输入"con"继续执行程序
+#print "\nInput \"esc\" EXIT! Input \"con\" GO ON!\n"
+#inputcont = raw_input("input :")
+##判断输入
+#if inputcont == "esc":
+#    exit(0)
+#开始实时监测dhcp Discovery包
+#while inputcont == 'con':
+while True:
+    #扫描dhcp没有获得ip的日志，提取mac地址,去掉重复的mac
+    mac = os.popen("grep 'eth0:' /var/log/syslog | grep 'no free leases' | grep -v 'f0:de:f1:73:0e:53'| awk '{print $8}' | uniq").read().strip()
+    listmac = mac.split("\n")
+    fp = file("/etc/dhcp/dhcpd-host.conf","r")
+    str = fp.read()
+    fp.close()
+
+    #使用FOR循环来判断提取的mac地址是否已经在dhcpd-host.conf中。
+    for i in range(len(listmac)):
+        #如果MAC地址已经在dhapd-host.conf中,pass
+        if listmac[i] in str:
+            pass
+        #否则绑定地址
+        else:
+            os.system("echo 'host "+cathostname[0]+" {\n\thardware ethernet "+listmac[i]+";\n\tfixed-address "+catip[0]+";\n\toption host-name \""+cathostname[0]+"\";\n\toption subnet-mask "+netmask+";\n\toption routers "+gateway+";\n\toption domain-name-servers "+dns+";\n\toption ntp-servers "+ip+";\n\tfilename \"/pxelinux.0\";\n\tnext-server "+nextserver+";\n}' >> /etc/dhcp/dhcpd-host.conf")
+        
+            os.system("/etc/init.d/dhcpd restart > /dev/null 2>&1")
+            #添加到 cobbler system 里
+            os.system("cobbler system  add --name="+cathostname[0]+" --hostname="+cathostname[0]+"  --dns-name="+cathostname[0]+" --profile=`cobbler profile list | awk '{print $1}'` --mac="+listmac[i]+" --interface=eth0 --ip-address="+catip[0]+" --subnet="+netmask+" --gateway="+gateway+" --name-servers="+dns+" --static=1 ")
+            print 'UP: ', catip[0], '\t', cathostname[0]
+            #设置DNS记录格式
+            dnsPTR = catip[0].split(".")[-1]
+            dnsA = cathostname[0].split(".")[0]
+            #找到DNS A记录和PTR记录文件
+            Afile = os.popen("cat /etc/cobbler/settings | grep forward_zones | awk -F : '{print $2}' | awk -F [ '{print $2}' | awk -F ] '{print $1}'").read().strip()
+            PTRfile = os.popen("cat /etc/cobbler/settings | grep reverse_zones | awk -F : '{print $2}' | awk -F [ '{print $2}' | awk -F ] '{print $1}'").read().strip()
+            #写入DNS记录到文件
+            os.system("echo '"+dnsPTR+"  IN  PTR  "+cathostname[0]+".;' >> /etc/bind/db."+PTRfile+"")
+            os.system("echo '"+dnsA+"  IN  A  "+catip[0]+";' >> /etc/bind/db."+Afile+"")
+            os.system("/etc/init.d/isc-dhcp-server restart > /dev/null 2>&1")
+            #每设置一个IP和HOSTNAME后,在列表中清除对应记录
+            os.system('echo "'+catip[0]+'\t'+cathostname[0]+'" >> /opt/post-nodes')
+            catip.pop(0)
+            cathostname.pop(0)
+            os.system("> /opt/pre-nodes")
+            for geek in range(len(catip)):
+                #if geek == int(0):
+                #    os.system('echo "'+catip[geek]+'\t'+cathostname[geek]+'" > /opt/pre-nodes')
+                #else:
+                os.system('echo "'+catip[geek]+'\t'+cathostname[geek]+'" >> /opt/pre-nodes')

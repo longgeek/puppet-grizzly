@@ -1,0 +1,115 @@
+netnum=`ifconfig -a | grep 'eth[0,1,2,3]' | wc -l`
+
+if [ "$netnum" -eq 2 ] 
+then
+    eth0ipaddr=`ifconfig eth0 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth1ipaddr=`ifconfig eth1 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth0mask=`ifconfig eth0 | grep Mask | awk -F: '{print $4}'`
+    eth1mask=`ifconfig eth1 | grep Mask | awk -F: '{print $4}'`
+    cat > /etc/network/interfaces << _GEEK_
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address $eth0ipaddr
+    netmask $eth0mask
+
+auto eth1
+iface eth1 inet manual
+    up ifconfig \$IFACE 0.0.0.0 up
+    down ifconfig \$IFACE down
+
+auto br-ex
+iface br-ex inet static
+    address $eth1ipaddr
+    netmask $eth1mask
+    gateway <%= br_ex_gateway %>
+    dns-nameservers 8.8.8.8
+_GEEK_
+fi  
+
+if [ "$netnum" -eq 3 ]
+then
+    eth0ipaddr=`ifconfig eth0 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth1ipaddr=`ifconfig eth1 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth2ipaddr=`ifconfig eth2 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth0mask=`ifconfig eth0 | grep Mask | awk -F: '{print $4}'`
+    eth1mask=`ifconfig eth1 | grep Mask | awk -F: '{print $4}'`
+    eth2mask=`ifconfig eth2 | grep Mask | awk -F: '{print $4}'`
+    cat > /etc/network/interfaces << _GEEK_
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address $eth0ipaddr
+    netmask $eth0mask
+
+auto eth1
+iface eth1 inet manual
+    up ifconfig \$IFACE 0.0.0.0 up
+    down ifconfig \$IFACE down
+
+auto eth2
+iface eth2 inet static
+    address $eth2ipaddr
+    netmask $eth2mask
+
+auto br-ex
+iface br-ex inet static
+    address $eth1ipaddr
+    netmask $eth1mask
+    gateway <%= br_ex_gateway %>
+    dns-nameservers 8.8.8.8
+_GEEK_
+fi  
+
+if [ "$netnum" -eq 4 ]
+then
+    eth0ipaddr=`ifconfig eth0 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth1ipaddr=`ifconfig eth1 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth2ipaddr=`ifconfig eth2 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth3ipaddr=`ifconfig eth2 | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'`
+    eth0mask=`ifconfig eth0 | grep Mask | awk -F: '{print $4}'`
+    eth1mask=`ifconfig eth1 | grep Mask | awk -F: '{print $4}'`
+    eth2mask=`ifconfig eth2 | grep Mask | awk -F: '{print $4}'`
+    eth3mask=`ifconfig eth2 | grep Mask | awk -F: '{print $4}'`
+    cat > /etc/network/interfaces << _GEEK_
+auto lo 
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address $eth0ipaddr
+    netmask $eth0mask
+
+auto eth1
+iface eth1 inet manual
+    up ifconfig \$IFACE 0.0.0.0 up
+    down ifconfig \$IFACE down
+
+auto eth2
+iface eth2 inet static
+    address $eth2ipaddr
+    netmask $eth2mask
+
+auto br-ex
+iface br-ex inet static
+    address $eth1ipaddr
+    netmask $eth1mask
+    gateway <%= br_ex_gateway %>
+    dns-nameservers 8.8.8.8
+
+#auto eth3
+#iface eth3 inet static
+#    address $eth3ipaddr
+#    netmask $eth3mask
+_GEEK_
+fi
+
+ovs-vsctl add-br br-int
+ovs-vsctl add-br br-ex
+ovs-vsctl add-port br-ex <%= br_ex_interfaces %>
+ifconfig <%= br_ex_interfaces %> 0 up
+/etc/init.d/networking restart
