@@ -2,7 +2,6 @@
 
 ## 更新源，并安装 Cobbler 和 Puppet 基本软件包.
 apt-get update || exit 0
-apt-get -y --force-yes install cobbler cobbler-web isc-dhcp-server bind9 debmirror puppetmaster puppet || exit 0
 
 ## 一些基本的变量
 MANAGE_INTERFACE='eth0'
@@ -14,6 +13,7 @@ PUBLIC_DNS='8.8.8.8'
 ROOT_PASSWD="111111"
 IPADDR=$(ifconfig $MANAGE_INTERFACE | awk '/inet addr/ {print $2}' | awk -F: '{print $2}')
 ROUTE=$(route -n | grep $MANAGE_INTERFACE | grep ^0.0.0.0 | awk '{print $2}')
+CHECKHOSTNAME=$(hostname | awk -F. '{print $3}')
 ZONENAME=$(hostname | awk -F . '{print $2"."$3}')
 SUBNETZONE=$(echo $IPADDR | awk -F. '{print $1"."$2"."$3}')
 SUBNET=$(echo $SUBNETZONE'.0')
@@ -23,11 +23,13 @@ ISO_NAME=$(echo $LS_ISO | awk -F: '{print $1}')
 ISO_TYPE=$(echo $LS_ISO | awk -F"'" '{print $2}' | awk '{print $1"-"$2}')
 
 ## 判断 IP 地址是否设置; 主机名是否为 FQDN; /opt/下是否存在 ISO 文件; 是否有网关.
-if [ "$IPADDR" = "" -o "$ZONENAME" = "" -o "$LS_ISO" = "" -o "$ROUTE" = "" ]
+if [ "$IPADDR" = "" -o "$ZONENAME" = "." -o "$LS_ISO" = "" -o "$ROUTE" = "" -o "$CHECKHOSTNAME" = "" ]
 then
-    echo "\nERROR: 'Not set ip address!' or 'Hostname error!' or 'Iso not found!' or 'Not set gateway!'\n"
+    echo "\nERROR: 'Not set ip address!' or 'Hostname not FQDN!' or 'Iso not found!' or 'Not set gateway!'\n"
     exit 0
 fi
+
+apt-get -y --force-yes install cobbler cobbler-web isc-dhcp-server bind9 debmirror puppetmaster puppet || exit 0
 
 ## 修改 Cobbler 配置文件
 COBBLER_PATH='/etc/cobbler/settings'
