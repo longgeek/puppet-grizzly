@@ -1,6 +1,9 @@
 ##!/bin/bash
 
 ## 更新源，并安装 Cobbler 和 Puppet 基本软件包.
+mkdir /var/www
+mv grizzly/ /var/www/
+echo 'deb file:///var/www/ grizzly/' > /etc/apt/sources.list
 apt-get update || exit 0
 
 ## 一些基本的变量
@@ -177,7 +180,7 @@ d-i     cdrom-detect/eject      boolean true
 # Do not halt/poweroff after install
 d-i     debian-installer/exit/halt      boolean false
 d-i     debian-installer/exit/poweroff  boolean false
-d-i     pkgsel/include string  vim openssh-server ntp lvm2
+d-i     pkgsel/include string  vim openssh-server ntp lvm2 sysstat sysfsutils
 
 # Set cloud-init data source to manual seeding
 cloud-init      cloud-init/datasources  multiselect     NoCloud
@@ -197,7 +200,7 @@ cobbler profile edit --name=$ISO_TYPE-x86_64 \
 --kopts="netcfg/choose_interface=auto " \
 --kickstart=/var/lib/cobbler/kickstarts/openstack.preseed
 
--------------------------------------------------------- PUPPET --------------------------------------------------
+##-------------------------------------------------------- PUPPET --------------------------------------------------
 
 ## 配置 Puppet
 mkdir /etc/puppet/files > /dev/null 2>&1
@@ -231,26 +234,21 @@ _GEEK_
 apt-get update
 apt-get -y install ruby libshadow-ruby1.8 puppet facter --force-yes
 
-#MANAGE_NETWORK=$MANAGE_NETWORK
-#DATE_NETWORK=$DATE_NETWORK
-#PUBLIC_NETWORK=$PUBLIC_NETWORK
-#PUBLIC_GATEWAY=$PUBLIC_GATEWAY
-#PUBLIC_DNS=$PUBLIC_DNS
 eth0ipaddr=\$(ifconfig $MANAGE_INTERFACE | grep 'inet addr:' | awk '{print \$2}' | awk -F: '{print \$2}')
 eth0ipaddrend=\$(echo \$eth0ipaddr | awk -F. '{print \$4}')
 netnum=\$(ifconfig -a | grep 'eth[0,1,2,3]' | wc -l)
-MANAGE_NETWORKS=\$(echo \$MANAGE_NETWORK | awk -F '.' '{print \$1\".\"\$2\".\"\$3}')
-DATE_NETWORKS=\$(echo \$DATE_NETWORK | awk -F '.' '{print \$1\".\"\$2\".\"\$3}')
-PUBLIC_NETWORKS=\$(echo \$PUBLIC_NETWORK | awk -F '.' '{print \$1\".\"\$2\".\"\$3}')
-MANAGE_NETMASK=\$(echo \$MANAGE_NETWORK | awk -F '/' '{print \$2}')
-DATE_NETMASK=\$(echo \$DATE_NETWORK | awk -F '/' '{print \$2}')
-public_netmask=\$(echo \$PUBLIC_NETWORK | awk -F '/' '{print \$2}')
+MANAGE_NETWORKS=\$(echo $MANAGE_NETWORK | awk -F '.' '{print \$1\".\"\$2\".\"\$3}')
+DATE_NETWORKS=\$(echo $DATE_NETWORK | awk -F '.' '{print \$1\".\"\$2\".\"\$3}')
+PUBLIC_NETWORKS=\$(echo $PUBLIC_NETWORK | awk -F '.' '{print \$1\".\"\$2\".\"\$3}')
+MANAGE_NETMASK=\$(echo $MANAGE_NETWORK | awk -F '/' '{print \$2}')
+DATE_NETMASK=\$(echo $DATE_NETWORK | awk -F '/' '{print \$2}')
+PUBLIC_NETMASK=\$(echo $PUBLIC_NETWORK | awk -F '/' '{print \$2}')
 
 ifconfig $MANAGE_INTERFACE:0:0:0:0 10.232.189.34/\$MANAGE_NETMASK
 MANAGE_NETMASKS=\$(ifconfig $MANAGE_INTERFACE:0:0:0:0 | awk '/Mask/ {print \$4}' | awk -F: '{print \$2}')
 ifconfig $MANAGE_INTERFACE:0:0:0:0 10.232.189.34/\$DATE_NETMASK
 DATE_NETMASKS=\$(ifconfig $MANAGE_INTERFACE:0:0:0:0 | awk '/Mask/ {print \$4}' | awk -F: '{print \$2}')
-ifconfig $MANAGE_INTERFACE:0:0:0:0 10.232.189.34/\$DATE_NETMASK
+ifconfig $MANAGE_INTERFACE:0:0:0:0 10.232.189.34/\$PUBLIC_NETMASK
 PUBLIC_NETMASKS=\$(ifconfig $MANAGE_INTERFACE:0:0:0:0 | awk '/Mask/ {print \$4}' | awk -F: '{print \$2}')
 ifconfig $MANAGE_INTERFACE:0:0:0:0 down
 
@@ -271,8 +269,8 @@ two () {
 iface eth1 inet static
     address \$PUBLIC_NETWORKS.\$eth0ipaddrend
     netmask \$PUBLIC_NETMASKS
-    gateway \$PUBLIC_GATEWAY
-    dns-nameservers \$PUBLIC_DNS
+    gateway $PUBLIC_GATEWAY
+    dns-nameservers $IPADDR $PUBLIC_DNS
 \" >> /etc/network/interfaces
 }
 
@@ -313,4 +311,24 @@ server=`hostname`
 runinterval=5\" >> /etc/puppet/puppet.conf
 echo \"\$eth0ipaddr \`hostname\`
 `ifconfig $MANAGE_INTERFACE | grep 'inet addr:' | awk '{print $2}' | awk -F: '{print $2}'` `hostname`\" >> /etc/hosts
-sed -i 's/-q -y/-q -y --force-yes/g' /usr/lib/ruby/1.8/puppet/provider/package/apt.rb" > /var/www/post.sh
+sed -i 's/-q -y/-q -y --force-yes/g' /usr/lib/ruby/1.8/puppet/provider/package/apt.rb
+sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+sysctl -p
+sed -i 's/server 0.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i 's/server 1.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i 's/server 2.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i 's/server 3.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i \"s/server ntp.ubuntu.com/server $IPADDR/g\" /etc/ntp.conf
+/etc/init.d/ntp stop
+ntpdate $IPADDR
+/etc/init.d/ntp restart" > /var/www/post.sh
+
+cp ./manifests/* /etc/puppet/manifests/
+cp -r ./modules/* /etc/puppet/modules/
+/etc/init.d/puppetmaster restart
+sed -i 's/server 0.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i 's/server 1.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i 's/server 2.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i 's/server 3.ubuntu.pool.ntp.org//g' /etc/ntp.conf
+sed -i "s/server ntp.ubuntu.com/server $IPADDR\\nserver 127.127.1.0\\nfudge 127.127.1.0 stratum 10/g" /etc/ntp.conf
+/etc/init.d/ntp restart
