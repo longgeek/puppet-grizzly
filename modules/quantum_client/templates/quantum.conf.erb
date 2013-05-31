@@ -2,6 +2,7 @@
 debug = <%= debug_log %>
 verbose = <%= verbose %>
 state_path = /var/lib/quantum
+lock_path = $state_path/lock
 bind_host = 0.0.0.0
 bind_port = 9696
 core_plugin = quantum.plugins.openvswitch.ovs_quantum_plugin.OVSQuantumPluginV2
