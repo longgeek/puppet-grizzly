@@ -2,10 +2,8 @@
 
 node /^node\d+\.test\.com$/ {
     Class["mysql"] -> Class["rabbitmq"] -> Class["authfile"] -> Class["keystone"] -> Class["glance"] -> Class["openvswitch"] -> Class["quantum_server"] -> Class["quantum_metadata_agent"] -> Class["quantum_l3_agent"] -> Class["quantum_dhcp_agent"] -> Class["cinder"] -> Class["nova_control"] -> Class["horizon"]
-	include mysql, rabbitmq, authfile, keystone, glance, openvswitch, quantum_server, quantum_metadata_agent, quantum_l3_agent, quantum_dhcp_agent, cinder, nova_control, horizon
-	#include mysql, rabbitmq, authfile, keystone, glance, openvswitch, quantum_server, nova_control, horizon, quantum_metadata_agent, quantum_openvswitch_agent, quantum_l3_agent, quantum_dhcp_agent
+    include mysql, rabbitmq, authfile, keystone, glance, openvswitch, quantum_server, quantum_metadata_agent, quantum_l3_agent, quantum_dhcp_agent, cinder, nova_control, horizon
 }
-
 
 node 'control.local.com' {
     Class["mysql"] -> Class["rabbitmq"] -> Class["authfile"] -> Class["keystone"] -> Class["glance"] -> Class["quantum_server"] -> Class["cinder"] -> Class["nova_control"] -> Class["horizon"] -> Class["swift_proxy"]
@@ -26,15 +24,15 @@ node 'compute22.local.com' {
 ###
 
 ## Base ##
-$debug_log                      = 'False'                            # 默认开启 debug 信息
+$debug_log                      = 'False'                           # 默认开启 debug 信息
 $verbose                        = 'True'                            # 默认开启 verbose 信息
-$command_path                   = '/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/bin/bash'  # exec 资源的命令执行路径
-$control_host			= '172.16.0.20'
-$rabbit_host                    = $control_host                    # rabbitmq 服务所在节点管理网络接口 IP 地址
+$command_path                   = '/usr/local/sbin:/usr/local/bin:/ sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/bin/bash'  # exec 资源的命令执行路径
+$control_host                   = '172.16.0.20'
+$rabbit_host                    = $control_host                     # rabbitmq 服务所在节点管理网络接口 IP 地址
 $memcache_host                  = $control_host
 
 ## Mysql ##
-$mysql_host                     = $control_host                    # mysql 服务所在节点的管理网络接口 IP 地址
+$mysql_host                     = $control_host                     # mysql 服务所在节点的管理网络接口 IP 地址
 $mysql_root_password            = 'mysql'                           # mysql root 用户的密码
 $keystone_db_password           = 'keystone'                        # keystone 数据库的密码
 $glance_db_password             = 'glance'                          # glance 数据库的密码
@@ -50,12 +48,12 @@ $admin_tenant                   = 'admin'                           # 超级租�
 $service_tenant_name            = 'service'                         # 所有服务所属的租户
 $service_password               = 'password'                        # 所有服务用户的密码(keystone、glance、nova、quantum、cinder、swift)
 $keystone_region                = 'RegionOne'
-$service_endpoint               = "http://$control_host:35357/v2.0"  # endpoint
+$service_endpoint               = "http://$control_host:35357/v2.0" # endpoint
 $os_auth_url                    = "http://$control_host:5000/v2.0"
-$keystone_host                  = $control_host                    # keystone 服务所在节点的管理网络接口 IP 地址
+$keystone_host                  = $control_host                     # keystone 服务所在节点的管理网络接口 IP 地址
 
 ## Glance ##
-$glance_host                    = $control_host                    # glance 服务节点的管理网络接口 IP 地址
+$glance_host                    = $control_host                     # glance 服务节点的管理网络接口 IP 地址
 $glance_default_store           = 'file'                            # glance 镜像默认使用的存储类型, 默认为 file, 暂时不支持 swift。
 $glance_workers                 = '1'                               # glance 服务节点的 CPU 核数
 
@@ -74,6 +72,7 @@ $use_namespaces                 = 'True'
 ## Nova ##
 $nova_api                       = $control_host
 $novncproxy_base_url            = 'http://192.168.8.20:6080/vnc_auto.html'    # control nodes 外网 IP 地址
+$libvirt_type                   = 'kvm'
 
 ## Cinder ##
 $cinder_volume_format           = "disk"                            # 默认为 'file', 用文件来模拟分区, 设置为 'file'是依赖 '$cinder_volume_size'
@@ -86,7 +85,7 @@ $cinder_volume_disk_part        = "['sdb1']"                        # 指定 cin
 $ring_part_power                = '18'
 $ring_replicas                  = '1'                               # 每个对象文件副本数量 
 $ring_min_part_hours            = '1' 
-$swift_proxy_host               = '172.16.0.20'                    # swift-proxy 代理节点的管理网络接口 IP 地址
+$swift_proxy_host               = '172.16.0.20'                     # swift-proxy 代理节点的管理网络接口 IP 地址
 $proxy_workers                  = '2'                               # 代理节点 CPU 核数
 $storage_workers                = '2'                               # 存储节点 CPU 核数
 $storage_numbers                = '1'                               # 一共有几个存储节点 
