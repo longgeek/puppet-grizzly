@@ -32,7 +32,7 @@ then
     exit 0
 fi
 
-apt-get -y --force-yes install cobbler cobbler-web isc-dhcp-server bind9 debmirror puppetmaster puppet || exit 0
+apt-get -y --force-yes install cobbler cobbler-web isc-dhcp-server bind9 debmirror puppetmaster puppet ntp || exit 0
 
 ## 修改 Cobbler 配置文件
 COBBLER_PATH='/etc/cobbler/settings'
@@ -180,7 +180,7 @@ d-i     cdrom-detect/eject      boolean true
 # Do not halt/poweroff after install
 d-i     debian-installer/exit/halt      boolean false
 d-i     debian-installer/exit/poweroff  boolean false
-d-i     pkgsel/include string  vim openssh-server ntp lvm2 sysstat sysfsutils
+d-i     pkgsel/include string  vim openssh-server ntp lvm2
 
 # Set cloud-init data source to manual seeding
 cloud-init      cloud-init/datasources  multiselect     NoCloud
@@ -321,7 +321,9 @@ sed -i 's/server 3.ubuntu.pool.ntp.org//g' /etc/ntp.conf
 sed -i \"s/server ntp.ubuntu.com/server $IPADDR/g\" /etc/ntp.conf
 /etc/init.d/ntp stop
 ntpdate $IPADDR
-/etc/init.d/ntp restart" > /var/www/post.sh
+/etc/init.d/ntp restart
+#apt-get -y --force-yes install sysstat sysfsutils
+" > /var/www/post.sh
 
 cp ./manifests/* /etc/puppet/manifests/
 cp -r ./modules/* /etc/puppet/modules/
@@ -332,3 +334,5 @@ sed -i 's/server 2.ubuntu.pool.ntp.org//g' /etc/ntp.conf
 sed -i 's/server 3.ubuntu.pool.ntp.org//g' /etc/ntp.conf
 sed -i "s/server ntp.ubuntu.com/server $IPADDR\\nserver 127.127.1.0\\nfudge 127.127.1.0 stratum 10/g" /etc/ntp.conf
 /etc/init.d/ntp restart
+mv autodeploy /usr/sbin/
+touch /opt/pre-nodes
