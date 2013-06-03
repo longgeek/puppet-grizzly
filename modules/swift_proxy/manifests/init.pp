@@ -30,6 +30,14 @@ class swift_proxy {
     file { "/etc/swift/ring.py":
         content => template("swift_proxy/ring.py.erb"),
         mode => 755,
+        notify => Exec["python ring.py"],
+    }
+
+    exec { "python ring.py":
+        command => "python /etc/swift/ring.py",
+        path => $command_path,
+        subscribe => File["/etc/swift/ring.py"],
+        refreshonly => true,
         notify => Exec["create_ring & rsyslog"],
     }
 
