@@ -14,12 +14,14 @@ dhcpbridge = /usr/bin/nova-dhcpbridge
 compute_scheduler_driver = nova.scheduler.filter_scheduler.FilterScheduler
 ## VOLUMES
 volume_api_class = nova.volume.cinder.API
+osapi_volume_listen_port = 5900
 iscsi_helper = ietadm
 iscsi_ip_address = <%= nova_api %>
+cinder_catalog_info = volume:cinder:internalURL
 # DATABASE
 sql_connection = mysql://nova:<%= nova_db_password %>@<%= mysql_host %>/nova
 # COMPUTE
-libvirt_type = kvm
+libvirt_type = <%= libvirt_type %>
 compute_driver = libvirt.LibvirtDriver
 instance_name_template = instance-%08x
 api_paste_config = /etc/nova/api-paste.ini
