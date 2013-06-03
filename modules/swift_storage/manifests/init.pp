@@ -52,6 +52,14 @@ class swift_storage {
     file { "/etc/swift/disk_part.py":
         content => template("swift_storage/disk_part.py.erb"),
         mode => "755",
+        notify => Exec["python ring_storage.py"],
+    }
+
+    exec { "python ring_storage.py":
+        command => "python /etc/swift/ring_storage.py",
+        path => $command_path,
+        refreshonly => true,
+        subscribe => File["/etc/swift/ring_storage.py"],
         notify => Exec["sed_rsync & rsyslog"],
     }
 
