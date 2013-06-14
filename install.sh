@@ -322,6 +322,7 @@ sed -i \"s/server ntp.ubuntu.com/server $IPADDR/g\" /etc/ntp.conf
 /etc/init.d/ntp stop
 ntpdate $IPADDR
 /etc/init.d/ntp restart
+puppet agent --enable
 #apt-get -y --force-yes install sysstat sysfsutils
 " > /var/www/post.sh
 
