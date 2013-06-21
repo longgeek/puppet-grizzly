@@ -20,6 +20,13 @@ openstack_grizzly_puppet_ubuntu
         3. 拷贝 ISO 到系统 /opt/ 中
         4. 拷贝 安装目录到系统 /opt/ 中
         5. cd /opt/openstack_grizzly_puppet_ubuntu
+           修改 install.sh 内容的环境变量，需要提前规划好的你所有网络环境:
+           MANAGE_NETWORK='172.16.0.0/16'
+           DATE_NETWORK='10.0.0.0/8'
+           PUBLIC_NETWORK='192.168.8.0/24'
+           PUBLIC_GATEWAY='192.168.8.1'
+           PUBLIC_DNS='8.8.8.8'
+           ROOT_PASSWD="111111"
            sh install.sh
 
 
