@@ -1,0 +1,11 @@
+#!/usr/bin/env/ python
+
+import os
+installmysql = """
+apt-get -y --force-yes -d install mysql-server python-mysqldb
+dpkg-preconfigure /var/cache/apt/archives/mysql-server-5.5*.deb
+echo 'mysql-server-5.5 mysql-server/root_password password <%= mysql_root_password %>' | sudo debconf-set-selections
+echo 'mysql-server-5.5 mysql-server/root_password_again password <%= mysql_root_password %>' | debconf-set-selections
+touch /etc/.installmysql.txt
+"""
+os.system(installmysql)
