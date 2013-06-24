@@ -1,11 +1,23 @@
 class mysql {
 
-    exec { "installmysql":
-        command => "apt-get -y --force-yes -d install mysql-server python-mysqldb; dpkg-preconfigure /var/cache/apt/archives/mysql-server-5.5*.deb; echo 'mysql-server-5.5 mysql-server/root_password password mysql' | sudo debconf-set-selections;  echo 'mysql-server-5.5 mysql-server/root_password_again password mysql' | debconf-set-selections; apt-get -y --force-yes install mysql-server python-mysqldb; touch /etc/mysql/.installmysql",
-        path => $command_path,
-        notify => Exec["mysqlconf"],
-        creates => "/etc/mysql/.installmysql",
+    file { "/etc/installmysql.py":
+        content => template("mysql/installmysql.py.erb"),
+        mode => 755,
+        notify => Exec["python installmysql.py"],
     }
+
+    exec { "python installmysql.py":
+        command => "python /etc/installmysql.py",
+        path => $command_path,
+        creates => "/etc/.installmysql.txt",
+        notify => Package["mysql-server", "python-mysqldb"],
+    }
+   
+    package { ["mysql-server", "python-mysqldb"]:
+        ensure => installed,
+        notify => Exec["mysqlconf"],
+    }
+
 
     exec { "mysqlconf":
         command => "sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/my.cnf; sed -i '44 i skip-name-resolve' /etc/mysql/my.cnf; touch /etc/mysql/.mysqlconf",
